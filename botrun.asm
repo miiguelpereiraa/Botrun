@@ -58,6 +58,7 @@ MAIN PROC FAR
 	MOV DS, AX
 	MOV ES, AX
 	
+	;Importa dos dados do ficheiro lab.txt
 	LEA DX, labltxt
 	CALL OPENFILE
 	MOV lfhandle, AX
@@ -76,6 +77,12 @@ MAIN PROC FAR
 	MOV CL,NWALLS		;Número de linhas no array de paredes
 	CALL DRAWALLS		;Desenhar as paredes
 	
+	;Desenha as moedas de jogo
+	LEA SI,COINS			;Array de paredes
+	XOR CX,CX				;CX a zero
+	MOV CL,NCOINS		;Número de linhas no array de paredes
+	CALL DRAWCOINS
+	
 	;Desenha o quadrado do robot
 	XOR AX,AX					;Coloca AX a 0
 	MOV AL,4						;Cor vermelha
@@ -84,16 +91,22 @@ MAIN PROC FAR
 	MOV BX,9					;Comprimento
 	CALL DRAWSQUARE		;Desenha quadrado
 	
-	;Desenha as moedas de jogo
-	LEA SI,COINS			;Array de paredes
-	XOR CX,CX				;CX a zero
-	MOV CL,NCOINS		;Número de linhas no array de paredes
-	CALL DRAWCOINS
+DRAW:	
+	CALL CHECKEY			;Verifica se foi pressionada uma tecla
+	CMP  AL,0
+	JE DRAW						;Se não foi pressionada nenhuma tecla, volta a verificar
 	
-	; MOV AH,00H	;Definir modo texto
-	; MOV AL,02H
-	; INT 10H
+	CMP AL,'q'
+	JE EXITGAME
 	
+	CALL KEYPRESSED		;Toma acção de acordo com tecla pressionada
+	
+	JE DRAW
+	
+EXITGAME:	
+	MOV AH,00H	;Definir modo texto
+	MOV AL,02H
+	INT 10H
 	; Retornar a execução para o SO
 	RET
 MAIN ENDP	
@@ -255,6 +268,159 @@ CLOSEFILE PROC NEAR
 
 	RET
 CLOSEFILE ENDP
+
+; Toma as acções necessárias, caso uma tecla tenha sido pressionada
+; INPUT:
+;	- AL - ASCII da tecla pressionada
+KEYPRESSED PROC NEAR
+
+	XOR AH,AH
+
+	CMP AL,'i'			;Se foi pressionada a tecla 'i', movimento para cima
+	JE GOUP
+	CMP AL,'k'		;Se foi pressionada a tecla 'k', movimento para baixo
+	JE GODOWN
+	CMP AL,'j'			;Se foi pressionada a tecla 'j', movimento para a esquerda
+	JE GOLEFT
+	CMP AL,'l'			;Se foi pressionada a tecla 'l', movimento para a direita
+	JE GORIGHT
+	CMP AL,'s'		;Se foi pressionada a tecla 's', guarda screenshot do jogo
+	CMP AL,'p'		;Se foi pressionada a tecla 'p', o jogo pára
+	RET					;Se não foi pressionada nenhuma tecla válida, sai sem efectuar qualquer acção
+	
+GOUP:
+	;Verificar se há colisão com monstro, parede ou moeda
+	CALL ROBOTUP
+	
+	RET
+GODOWN:
+	;Verificar se há colisão com monstro, parede ou moeda
+	CALL ROBOTDOWN
+	
+	RET
+GOLEFT:
+	;Verificar se há colisão com monstro, parede ou moeda
+	CALL ROBOTLEFT
+
+	RET
+GORIGHT:
+	;Verificar se há colisão com monstro, parede ou moeda
+	CALL ROBOTRIGHT
+
+	RET
+KEYPRESSED ENDP
+
+; Move o robot para cima
+ROBOTUP PROC NEAR
+
+	XOR AH,AH					;Garante AH a 0
+	;Desenha linha preta horizontal em baixo 
+	MOV AL,0						;Cor preta
+	MOV DX,YROBOT			;Valor Y inicial
+	ADD DX,8						;Y + 8 para eliminar a linha inferior do quadrado
+	MOV CX,XROBOT			;Valor X inicial
+	MOV BX,9					;Comprimento
+	CALL LHORIZONTAL
+	
+	DEC YROBOT				;Decrementa Y do robot
+
+	;Desenha linha vermelha horizontal em cima
+	MOV AL,4						;Cor vermelha
+	MOV DX,YROBOT			;Valor Y inicial
+	MOV CX,XROBOT			;Valor X inicial
+	MOV BX,9					;Comprimento
+	CALL LHORIZONTAL
+	
+	RET
+ROBOTUP ENDP
+
+; Move o robot para baixo
+ROBOTDOWN PROC NEAR
+
+	XOR AH,AH
+	;Desenha linha preta horizontal em cima 
+	MOV AL,0						;Cor preta
+	MOV DX,YROBOT			;Valor Y inicial
+	MOV CX,XROBOT			;Valor X inicial
+	MOV BX,9					;Comprimento
+	CALL LHORIZONTAL
+	
+	INC YROBOT				;Incrementa Y do robot
+	
+	;Desenha linha vermelha horizontal em baixo
+	MOV AL,4						;Cor vermelha
+	MOV DX,YROBOT			;Valor Y inicial
+	ADD DX,8						;Y + 8 para desenhar a linha inferior do quadrado
+	MOV CX,XROBOT			;Valor X inicial
+	MOV BX,9					;Comprimento
+	CALL LHORIZONTAL
+	
+	RET
+ROBOTDOWN ENDP
+
+; Move o robot para a esquerda
+ROBOTLEFT PROC NEAR
+
+	XOR AH,AH
+	;Desenha linha preta vertical à direita 
+	MOV AL,0						;Cor preta
+	MOV DX,YROBOT			;Valor Y inicial
+	MOV CX,XROBOT			;Valor X inicial
+	ADD CX,8						;X + 8 para eliminar a linha da direita do quadrado 
+	MOV BX,9					;Comprimento
+	CALL LVERTICAL
+	
+	DEC XROBOT				;Decrementa X do robot
+	
+	;Desenha linha vermelha vertical à esquerda
+	MOV AL,4						;Cor vermelha
+	MOV DX,YROBOT			;Valor Y inicial
+	MOV CX,XROBOT			;Valor X inicial
+	MOV BX,9					;Comprimento
+	CALL LVERTICAL
+	
+	RET
+ROBOTLEFT ENDP
+
+; Move o robot para a direita
+ROBOTRIGHT PROC NEAR
+
+	XOR AH,AH
+	;Desenha linha preta vertical à esquerda
+	MOV AL,0						;Cor preta
+	MOV DX,YROBOT			;Valor Y inicial
+	MOV CX,XROBOT			;Valor X inicial
+	MOV BX,9					;Comprimento
+	CALL LVERTICAL
+	
+	INC XROBOT				;Incrementa X do robot
+	
+	;Desenha linha vermelha vertical à direita
+	MOV AL,4						;Cor vermelha
+	MOV DX,YROBOT			;Valor Y inicial
+	MOV CX,XROBOT			;Valor X inicial
+	ADD CX,8						;X + 8 para desenhar a linha da direita do quadrado 
+	MOV BX,9					;Comprimento
+	CALL LVERTICAL
+	
+	RET
+ROBOTRIGHT ENDP
+
+; Verifica, de forma não bloqueante, se foi pressionada uma tecla do teclado
+; OUTPUT:
+;	- AL : ASCII da tecla pressionada
+CHECKEY PROC NEAR
+	XOR AL,AL	;AL a zero - Se uma tecla for pressionada, será onde ficará guardada a mesma
+	MOV AH,01	;Permite verificar se existe alguma tecla no buffer do teclado (Significa que uma tecla foi pressionada)
+	INT 16H		;Interrução 16h - Keyboard I/O Service
+	JZ ENDCK		;Se Zero Flag = 1, buffer vazio (Não foi pressionada nenhuma tecla)
+	MOV AH,0	;Coloca ASCII code da tecla pressionada em AL e limpa o buffer do teclado
+	INT 16H
+	
+ENDCK:
+	RET
+
+CHECKEY ENDP
 
 ;Desenha as paredes de jogo
 ;INPUT:
@@ -470,7 +636,7 @@ LHORIZONTAL ENDP
 ;	- BL: Comprimento da linha
 LVERTICAL PROC NEAR
 		XOR BH,BH		;Garante BH a zero, para que seja desenhado sempre na primeira display page
-		INC BL				;Corrige problema com o desenho do pixel inferior direito
+		; INC BL				;Corrige problema com o desenho do pixel inferior direito
 STARTLV:
 		CMP BX,0			;Verifica se desenhou a reta completa
 		JLE FIMLV
