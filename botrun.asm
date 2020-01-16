@@ -76,12 +76,19 @@ MAIN PROC FAR
 	MOV CL,NWALLS		;Número de linhas no array de paredes
 	CALL DRAWALLS		;Desenhar as paredes
 	
+	;Desenha o quadrado do robot
 	XOR AX,AX					;Coloca AX a 0
 	MOV AL,4						;Cor vermelha
 	MOV DX,YROBOT			;Valor Y inicial
 	MOV CX,XROBOT			;Valor X inicial
 	MOV BX,9					;Comprimento
 	CALL DRAWSQUARE		;Desenha quadrado
+	
+	;Desenha as moedas de jogo
+	LEA SI,COINS			;Array de paredes
+	XOR CX,CX				;CX a zero
+	MOV CL,NCOINS		;Número de linhas no array de paredes
+	CALL DRAWCOINS
 	
 	; MOV AH,00H	;Definir modo texto
 	; MOV AL,02H
@@ -328,20 +335,118 @@ ENDDS:
 	RET
 DRAWSQUARE ENDP
 
+;Desenha as moedas de jogo
+;INPUT:
+;	- SI: ARRAY de moedas
+;	- CX: Número de moedas no array
+DRAWCOINS PROC NEAR
+
+STARTDC:
+		CMP CX,0			;Verifica se todas as linhas foram desenhadas
+		JE ENDDC
+		PUSH CX			;Guarda o valor de CX na pilha
+		MOV DX,[SI]	;Valor Y inicial
+		ADD SI,2			
+		MOV CX,[SI]	;Valor X inicial
+		ADD SI,2
+		CALL DRAWCIRCLE
+		POP CX			;Obtém novamente o valor de CX
+		DEC CX			;Decrementa o número de moedas a desenhar
+		JMP STARTDC
+		
+ENDDC:
+		RET
+DRAWCOINS ENDP
+
+;Desenha um circulo de cor amarela 
+;INPUT:
+;	- DX: Valor Y inicial do quadrado onde o circulo está contido
+;	- CX: Valor X inicial do quadrado onde o circulo está contido
+DRAWCIRCLE PROC NEAR
+
+	MOV AL,14					;Define a cor dos pixeis amarela
+	PUSH DX						;Guarda valor Y inicial na pilha
+	PUSH CX						;Guarda valor X inicial na pilha
+	ADD CX,3						;Adiciona 3 à coordenada X
+	MOV BX,3					;Define o comprimento de 3
+	CALL LHORIZONTAL
+	POP CX						;Retira o valor X inicial da pilha
+	POP DX						;Retira o valor Y inicial da pilha
+	PUSH DX						;Guarda valor Y inicial na pilha
+	PUSH CX						;Guarda valor X inicial na pilha
+	ADD DX,1						;Adiciona 1 à coordenada Y
+	ADD CX,2						;Adiciona 2 à coordenada X
+	MOV BX,5					;Define o comprimento de 5
+	CALL LHORIZONTAL
+	POP CX						;Retira o valor X inicial da pilha
+	POP DX						;Retira o valor Y inicial da pilha
+	PUSH DX						;Guarda valor Y inicial na pilha
+	PUSH CX						;Guarda valor X inicial na pilha
+	ADD DX,2						;Adiciona 2 à coordenada Y
+	ADD CX,1						;Adiciona 1 à coordenada X
+	MOV BX,7					;Define o comprimento de 7
+	CALL LHORIZONTAL
+	POP CX						;Retira o valor X inicial da pilha
+	POP DX						;Retira o valor Y inicial da pilha
+	PUSH DX						;Guarda valor Y inicial na pilha
+	PUSH CX						;Guarda valor X inicial na pilha
+	ADD DX,3						;Adiciona 3 à coordenada Y
+	MOV BX,9					;Define o comprimento de 9
+	CALL LHORIZONTAL
+	POP CX						;Retira o valor X inicial da pilha
+	POP DX						;Retira o valor Y inicial da pilha
+	PUSH DX						;Guarda valor Y inicial na pilha
+	PUSH CX						;Guarda valor X inicial na pilha
+	ADD DX,4						;Adiciona 4 à coordenada Y
+	MOV BX,9					;Define o comprimento de 9
+	CALL LHORIZONTAL
+	POP CX						;Retira o valor X inicial da pilha
+	POP DX						;Retira o valor Y inicial da pilha
+	PUSH DX						;Guarda valor Y inicial na pilha
+	PUSH CX						;Guarda valor X inicial na pilha
+	ADD DX,5						;Adiciona 5 à coordenada Y
+	MOV BX,9					;Define o comprimento de 9
+	CALL LHORIZONTAL
+	POP CX						;Retira o valor X inicial da pilha
+	POP DX						;Retira o valor Y inicial da pilha
+	PUSH DX						;Guarda valor Y inicial na pilha
+	PUSH CX						;Guarda valor X inicial na pilha
+	ADD DX,6						;Adiciona 6 à coordenada Y
+	ADD CX,1						;Adiciona 1 à coordenada X
+	MOV BX,7					;Define o comprimento de 7
+	CALL LHORIZONTAL
+	POP CX						;Retira o valor X inicial da pilha
+	POP DX						;Retira o valor Y inicial da pilha
+	PUSH DX						;Guarda valor Y inicial na pilha
+	PUSH CX						;Guarda valor X inicial na pilha
+	ADD DX,7						;Adiciona 1 à coordenada Y
+	ADD CX,2						;Adiciona 2 à coordenada X
+	MOV BX,5					;Define o comprimento de 5
+	CALL LHORIZONTAL
+	POP CX						;Retira o valor X inicial da pilha
+	POP DX						;Retira o valor Y inicial da pilha
+	ADD DX,8						;Adiciona 1 à coordenada Y
+	ADD CX,3						;Adiciona 3 à coordenada X
+	MOV BX,3					;Define o comprimento de 3
+	CALL LHORIZONTAL
+	
+
+DRAWCIRCLE ENDP
+
 ;Desenha uma horizontal com ponto inicial (X,Y) e comprimento Z
 ;INPUT:
 ;	- AL: Cor dos pixeis a desenhar
 ;	- DX: Valor Y inicial
 ;	- CX: Valor X inicial
-;	- BX: Comprimento da linha
+;	- BL: Comprimento da linha
 LHORIZONTAL PROC NEAR
-
+		XOR BH,BH		;Garante BH a zero, para que seja desenhado sempre na primeira display page
 STARTLH:	
 		CMP BX,0			;Verifica se desenhou a reta completa
 		JLE FIMLH
 		MOV AH,12		;Função para desenhar um pixel
 		INT 10H			;Interrupção 10h da BIOS
-		DEC BX			;Decrementa comprimento
+		DEC BL			;Decrementa comprimento
 		INC CX				;Incrementa X
 		JMP STARTLH
 FIMLH:			
@@ -353,15 +458,16 @@ LHORIZONTAL ENDP
 ;	- AL: Cor dos pixeis a desenhar
 ;	- DX: Valor Y inicial
 ;	- CX: Valor X inicial
-;	- BX: Comprimento da linha
+;	- BL: Comprimento da linha
 LVERTICAL PROC NEAR
-		INC BX				;Corrige problema com o desenho do pixel inferior direito dos quadrados
+		XOR BH,BH		;Garante BH a zero, para que seja desenhado sempre na primeira display page
+		INC BL				;Corrige problema com o desenho do pixel inferior direito
 STARTLV:
 		CMP BX,0			;Verifica se desenhou a reta completa
 		JLE FIMLV
 		MOV AH,12		;Função para desenhar um pixel
 		INT 10H			;Interrupção 10h da BIOS
-		DEC BX			;Decrementa comprimento
+		DEC BL			;Decrementa comprimento
 		INC DX				;Incrementa Y
 		JMP STARTLV
 	
