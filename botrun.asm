@@ -3,6 +3,9 @@ STACK SEGMENT PARA STACK
 STACK ENDS
 
 DATA SEGMENT PARA 'DATA'
+	; Localização do ficheiro lab.txt
+    labltxt	    db	'.\lab.txt', 0
+
 	; Conteudo File Handle
 	cfhandle 	dw 	?
 
@@ -55,6 +58,13 @@ MAIN PROC FAR
 	MOV DS, AX
 	MOV ES, AX
 	
+	LEA DX, labltxt
+	CALL OPENFILE
+	MOV lfhandle, AX
+	CALL LOADLAB
+	MOV BX, lfhandle
+	CALL CLOSEFILE
+
 	;Definição do modo gráfico de 320x200, 256 cores
 	MOV AH,00H	;Prepara para definir o modo gráfico
 	MOV AL,13H		;Modo gráfico 320x200, 256 cores
