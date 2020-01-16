@@ -212,23 +212,25 @@ LL_4:
 	; e se foi lido então voltar a ler mais 80 bytes do ficheiro e reiniciar o indice de leitura (SI).
 	; Se lineSize for igual a zero significa que n há mais conteudo para ler do ficheir lab.txt então
 	; é necessário sair do procedimento
-	MOV AX, SI
-	CMP AL, lineSize
-	JL LL_5
-	PUSH BX
-	MOV BX, lfhandle
-	CALL READLINE
-	POP BX
-	MOV SI, 00H
-	CMP lineSize, 00H
-	JE LL_END
+	MOV AX, SI					; Guardar o valor de SI em AX
+	CMP AL, lineSize			; Comparar AL com lineSize
+	JL LL_5						; Se AL for inferior a lineSize então saltar para LL_2
+	PUSH BX						; Guardar o valor de BX
+	MOV BX, lfhandle			; Guardar em BX o handle do ficheiro de lab.txt
+	CALL READLINE				; Voltar a preenhcer o buffer (lineSize)
+	POP BX						; Restaurar o valor de BX
+	MOV SI, 00H					; Reiniciar o indice do buffer (lineSize)
+	CMP lineSize, 00H			; Comparar lineSize com 0
+	JE LL_END					; Se forem iguais então saltar fora
 LL_5:
-	MOV AX, 00H
-	MOV AL, fileLine[SI]
-	INC SI
-	CMP AL, 0AH
-	JE LL_1
-	JMP	LL_4
+	; Incrementar SI até que SI aponte para o valor depois de 0AH (LF)
+	MOV AX, 00H				; Limpar AX
+	MOV AL, fileLine[SI]	; Copiar o byte do buffer (fileLine) no indice SI para AX
+	INC SI					; Incrementar SI
+	; Se AX for diferente de LF (0AH) então voltar a repetir desde LL_5
+	CMP AL, 0AH				; Comparar AL com LF (0AH)
+	JE LL_1					; Se forem iguals, então saltar para LL_1 (começar a processar uma nova parede)
+	JMP	LL_4				; Saltar para LL_5
 LL_END:
 	RET
 LOADLAB ENDP
