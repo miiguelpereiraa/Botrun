@@ -16,23 +16,19 @@ DATA SEGMENT PARA 'DATA'
 	
 	;######################preenchimento "manual" temporário######################
 	;Coordenada Y inicial do robot
-	YROBOT DW 94
+	YROBOT 		DW 	94
 	;Coordenada X inicial do robot
-	XROBOT DW 5
+	XROBOT 		DW 	5
 	
 	;Coordenada Y da meta
-	YEND DW 84	
+	YEND 		DW 	84	
 	;Coordenada X da meta
-	XEND DW 225	
+	XEND 		DW 	225	
 	
 	;Array de paredes
-	WALLS DW 'h',0,0,239,'h',199,0,239,'v',0,0,199,'v',0,239,199,'h',1,0,239,'h',198,0,239,'v',0,1,199,'v',0,238,199,'h',87,30,60,'h',112,30,60
-				DW 'h',30,30,190,'h',169,30,210,'h',50,60,80,'h',70,60,60,'v',50,140,40,'v',70,120,42,'v',30,30,57,'v',112,30,57,'h',142,60,60,'h',79,140,40
-				DW 'h',112,120,40,'v',112,160,57,'h',127,180,40,'v',30,180,97,'h',99,200,39,'v',69,200,30,'v',30,220,39,'v',0,120,15,'v',15,160,15,'h',0,0,0
-				DW 'h',88,30,60,'h',113,30,60,'h',31,30,190,'h',170,30,210,'h',51,60,80,'h',71,60,60,'v',50,141,40,'v',70,121,42,'v',30,31,57,'v',112,31,57
-				DW 'h',143,60,60,'h',80,140,40,'h',113,120,40,'v',112,161,57,'h',128,180,40,'v',30,181,97,'h',100,200,39,'v',69,201,30,'v',30,221,39,'v',0,121,15,'v',15,161,15
+	WALLS 		DW 	400 dup(' ')
 	;Número de linhas presente do array walls
-	NWALLS DB 51
+	NWALLS 		DB 	0
 	
 	;Array de monstros
 	;MONSTERS DW 'm',36,150,1.00,'h','m',70,40,2.85,'v','m',100,165,3.25,'v','m',125,95,3.60,'h','m',155,130,1.35,'v'
@@ -98,8 +94,133 @@ OPENFILE PROC NEAR
     RET
 OPENFILE ENDP
 
+; Lê 80 bytes de um ficheiro para o buffer
+; INPUT:
+;		- BX: Handle do ficheiro
+; OUTPUT:
+;		- fileLine: Buffer para onde se escreveu o contúdo lido do ficheiro
+;		- lineSize: Número de bytes lidos
+READLINE PROC NEAR
+    MOV AH, 3FH	        ; Operação de leitura do ficheiro
+    MOV CX, 80          ; Indicar que é para ler 80 bytes
+    LEA DX, fileLine  	; Indicar o buffer de destino
+    INT 21h
+
+	MOV lineSize, AL	; Guardar o número de bytes lidos
+
+	RET
+READLINE ENDP
+
+; Processa 3 caracteres e converte-os para número
+; INPUT:
+;		- SI: Indice do fileLine onde se encontra o número
+;		- fileLine: Do qual buffer ler o número
+;		- lineSize: Tamanho do buffer
+;		- lfhandle: Handle do ficheiro lab.txt
+; OUTPUT:
+;		- AX: Número convertido
+;		- SI: Ultimo indice utilizado +1
+PROCESSNUMBER PROC NEAR
+	MOV AX, 00H				; AX é utilizado como acumulador
+	MOV CX, 03H				; CX indica o número de caracteres processados
+
+PN_1:
+	; Verificar se o buffer foi totalmente lido (se SI >= lineSize então todo o buffer foi lido)
+	; e se foi lido então voltar a ler mais 80 bytes do ficheiro e reiniciar o indice de leitura (SI)
+	PUSH AX					; Guardar o valor de AX
+	MOV AX, SI				; Guardar o valor de SI em AX
+	CMP AL, lineSize		; Comparar AL com lineSize
+	JL PN_2					; Se AL for inferior a lineSize então saltar para PN_2
+	PUSH CX					; Guardar o valor de CX
+	MOV BX, lfhandle		; Guardar em BX o handle do ficheiro de lab.txt
+	CALL READLINE			; Voltar a preenhcer o buffer (lineSize)
+	POP CX					; Restaurar o valor de CX
+	MOV SI, 00H				; Reiniciar o indice do buffer (lineSize)
+PN_2:
+	POP AX					; Restaurar o valor de AX
+	MOV DX, 00H				; Limpar DX
+	MOV DL, fileLine[SI]	; Ler do buffer para DL
+	; Se DL for espaço (20H) ou CR (0Dh) então sair do procedimento
+	CMP DL, 20H				; Comparar DL com espaço (20H)
+	JE PN_END				; Se DL for igual ao espaço (20H) então saltar fora
+	CMP DL, 0DH				; Comparar DL com CR (0DH)
+	JE PN_END				; Se DL for igual ao CR (0DH) então saltar fora
+	INC SI					; Incrementar SI
+	SUB DL, 30H				; Subtrair 30H de DL para obter o valor real
+	PUSH DX					; Guardar o valor real na stack (porque MUL utiliza o DX)
+	MOV BX, 0AH				; Guardar 10 (em decimal) em BX
+	MUL BX					; Multiplicar AX por BX (multiplicar AX por 10)
+	POP DX					; Restaurar o valor de DX
+	ADD AX, DX				; Somar DX ao AX (operação completa: AX = AX * 10 + DX)
+	LOOP PN_1				; Voltar a processar outro digito caso necessário
+PN_END:
+	RET
+PROCESSNUMBER ENDP
+
 ; Carrega o labirinto do ficheiro para a memória
 LOADLAB PROC NEAR
+	MOV BX, lfhandle			; Guardar o handle do ficheiro de lab.txt em BX
+	CALL READLINE				; Preenhcer o buffer (fileLine) com o conteúdo do ficheiro lab.txt
+	MOV BX, 00H					; Limpar o valor de BX, BX é usado como indice para o array de WALLS
+	MOV SI, 00H					; Limpar o valor de SI, SI é usado como indice para o buffer (fileLine)
+LL_1:
+	; Verificar se o buffer foi totalmente lido (se SI >= lineSize então todo o buffer foi lido)
+	; e se foi lido então voltar a ler mais 80 bytes do ficheiro e reiniciar o indice de leitura (SI).
+	; Se lineSize for igual a zero significa que n há mais conteudo para ler do ficheir lab.txt então
+	; é necessário sair do procedimento
+	MOV AX, SI					; Guardar o valor de SI em AX
+	CMP AL, lineSize			; Comparar AL com lineSize
+	JL LL_2						; Se AL for inferior a lineSize então saltar para LL_2
+	PUSH BX						; Guardar o valor de BX
+	MOV BX, lfhandle			; Guardar em BX o handle do ficheiro de lab.txt
+	CALL READLINE				; Voltar a preenhcer o buffer (lineSize)
+	POP BX						; Restaurar o valor de BX
+	MOV SI, 00H					; Reiniciar o indice do buffer (lineSize)
+	CMP lineSize, 00H			; Comparar lineSize com 0
+	JE LL_END					; Se forem iguais então saltar fora
+LL_2:
+	INC NWALLS					; Incrementar o NWALLS
+	MOV AX, 00H					; Limpar AX
+	MOV AL, fileLine[SI]		; Copiar um byte para AX
+	INC SI						; Incrementar o indice do buffer 2x para colocar o indice
+	INC SI						; a apontar para um número do buffer (fileLine)
+	MOV WALLS[BX], AX			; Mover o byte do AX para o array WALLS (o valor que indica se a parede é vertical ou horizontal)
+	ADD BX, 02H					; Avançar com o indice BX em dois bytes
+	MOV CX, 03H					; Mover 03H para CX (porque são 3 números a processar por parede: linha, coluna e o tamanho)
+LL_3:
+	PUSH BX						; Guardar o valor de BX
+	PUSH CX						; Guardar o valor de CX
+	CALL PROCESSNUMBER			; Processar um número do buffer (fileLine)
+	POP CX						; Restaurar o valor de CX
+	POP BX						; Restaurar o valor de BX
+	MOV WALLS[BX], AX			; Guardar o número processado no array WALLS
+	ADD BX, 02H					; Anvaçar com o indice BX em dois bytes
+	INC SI						; Incrementar SI
+	LOOP LL_3					; Processar mais números caso haja
+LL_4:
+	; Verificar se o buffer foi totalmente lido (se SI >= lineSize então todo o buffer foi lido)
+	; e se foi lido então voltar a ler mais 80 bytes do ficheiro e reiniciar o indice de leitura (SI).
+	; Se lineSize for igual a zero significa que n há mais conteudo para ler do ficheir lab.txt então
+	; é necessário sair do procedimento
+	MOV AX, SI
+	CMP AL, lineSize
+	JL LL_5
+	PUSH BX
+	MOV BX, lfhandle
+	CALL READLINE
+	POP BX
+	MOV SI, 00H
+	CMP lineSize, 00H
+	JE LL_END
+LL_5:
+	MOV AX, 00H
+	MOV AL, fileLine[SI]
+	INC SI
+	CMP AL, 0AH
+	JE LL_1
+	JMP	LL_4
+LL_END:
+	RET
 LOADLAB ENDP
 
 ; Carrega o conteudo do ficheiro para a memória
