@@ -349,7 +349,16 @@ STARTDC:
 		ADD SI,2			
 		MOV CX,[SI]	;Valor X inicial
 		ADD SI,2
+		PUSH CX			;Guarda valor X inicial na pilha
+		PUSH DX			;Guarda valor Y inicial na pilha
 		CALL DRAWCIRCLE
+		POP DX			;Retira valor Y inicial da pilha
+		POP CX			;Retira valor X inicial da pilha
+		MOV AL,6			;Define a cor castanha para o quadrado interior da moeda
+		ADD DX,2			;Adiciona 2 ao valor Y inicial para quadrado ficar no interior da moeda
+		ADD CX,2			;Adiciona 2 ao valor X inicial para quadrado ficar no interior da moeda
+		MOV BX,5		;Comprimento do quadrado = 5
+		CALL DRAWSQUARE
 		POP CX			;Obtém novamente o valor de CX
 		DEC CX			;Decrementa o número de moedas a desenhar
 		JMP STARTDC
