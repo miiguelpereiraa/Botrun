@@ -34,7 +34,7 @@ DATA SEGMENT PARA 'DATA'
 	NWALLS 		DB 	0
 	
 	;Array de monstros
-	MONSTERS DW 36,150,1.00,'h',70,40,2.85,'v',100,165,3.25,'v',125,95,3.60,'h',155,130,1.35,'v'
+	;MONSTERS DW 36,150,1.00,'h',70,40,2.85,'v',100,165,3.25,'v',125,95,3.60,'h',155,130,1.35,'v'
 	;Número de monstros 
 	NMONSTERS DB 5
 	
@@ -302,29 +302,13 @@ DRAWALLS ENDP
 ;	- CX: Valor X inicial
 ;	- BX: Comprimento da linha
 DRAWSQUARE PROC NEAR
-	
-	PUSH DX						;Guarda valor Y inicial na pilha
-	PUSH CX						;Guarda valor X inicial na pilha
-	PUSH BX						;Guarda comprimento
-	CALL LVERTICAL			;Desenha linha vertical da esquerda
-	POP BX						;Retira comprimento da pilha
-	POP CX						;Retira valor X inicial da pilha
-	POP DX						;Retira valor Y inicial da pilha
-	PUSH DX						;Guarda valor Y inicial na pilha
-	PUSH CX						;Guarda valor X inicial na pilha
-	PUSH BX						;Guarda comprimento
-	ADD CX,9						;Adiciona 9 ao valor X
-	CALL LVERTICAL			;Desenha linha vertical da direita
-	POP BX						;Retira comprimento da pilha
-	POP CX						;Retira valor X inicial da pilha
-	POP DX						;Retira valor Y inicial da pilha
-	PUSH DX						;Guarda valor Y inicial na pilha
-	PUSH CX						;Guarda valor X inicial na pilha
-	PUSH BX						;Guarda comprimento
-	MOV AH,BL					;Contador para desenhar as linhas horizontais de preenchimento do quadrado = comprimento + 1
-	INC AH							;Incrementa AH para desenhar a última linha do quadrado
+
+	MOV AH,BL					;Contador para desenhar as linhas horizontais de preenchimento do quadrado
 STARTDS:
-	PUSH AX						;Guarda contador de linhas horizontais na pilha
+	PUSH DX						;Guarda valor Y inicial na pilha
+	PUSH CX						;Guarda valor X inicial na pilha
+	PUSH BX						;Guarda comprimento
+	PUSH AX						;Guarda contador de linhas horizontais na pilha + cor dos pixeis
 	CMP AH,0						;Verifica se o quadrado está preenchido
 	JE ENDDS
 	CALL LHORIZONTAL		;Desenha linha superior do quadrado
@@ -334,9 +318,6 @@ STARTDS:
 	POP DX						;Retira valor Y inicial da pilha
 	INC DX							;Incrementa valor Y
 	DEC AH						;Decrementa contador 
-	PUSH DX						;Guarda valor Y inicial na pilha
-	PUSH CX						;Guarda valor X inicial na pilha
-	PUSH BX						;Guarda comprimento na pilha
 	JMP STARTDS
 
 ENDDS:
