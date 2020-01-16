@@ -169,16 +169,11 @@ DRAWALLS ENDP
 ;	- CX: Valor X inicial
 ;	- BX: Comprimento da linha
 DRAWSQUARE PROC NEAR
-
+	
 	PUSH DX						;Guarda valor Y inicial na pilha
 	PUSH CX						;Guarda valor X inicial na pilha
 	PUSH BX						;Guarda comprimento
-	CALL LHORIZONTAL		;Desenha linha superior do quadrado
-	POP BX						;Retira comprimento da pilha
-	POP CX						;Retira valor X inicial da pilha
-	PUSH CX						;Guarda valor X inicial na pilha
-	PUSH BX						;Guarda comprimento na pilha
-	CALL LVERTICAL			;Desenha linha da esquerda do quadrado
+	CALL LVERTICAL			;Desenha linha vertical da esquerda
 	POP BX						;Retira comprimento da pilha
 	POP CX						;Retira valor X inicial da pilha
 	POP DX						;Retira valor Y inicial da pilha
@@ -186,13 +181,37 @@ DRAWSQUARE PROC NEAR
 	PUSH CX						;Guarda valor X inicial na pilha
 	PUSH BX						;Guarda comprimento
 	ADD CX,9						;Adiciona 9 ao valor X
-	CALL LVERTICAL			;Desenha linha da direita do quadrado
+	CALL LVERTICAL			;Desenha linha vertical da direita
 	POP BX						;Retira comprimento da pilha
 	POP CX						;Retira valor X inicial da pilha
 	POP DX						;Retira valor Y inicial da pilha
-	ADD DX,9						;Aciciona 9 ao valor Y
-	CALL LHORIZONTAL
-	
+	PUSH DX						;Guarda valor Y inicial na pilha
+	PUSH CX						;Guarda valor X inicial na pilha
+	PUSH BX						;Guarda comprimento
+	MOV AH,BL					;Contador para desenhar as linhas horizontais de preenchimento do quadrado = comprimento + 1
+	INC AH							;Incrementa AH para desenhar a última linha do quadrado
+STARTDS:
+	PUSH AX						;Guarda contador de linhas horizontais na pilha
+	CMP AH,0						;Verifica se o quadrado está preenchido
+	JE ENDDS
+	CALL LHORIZONTAL		;Desenha linha superior do quadrado
+	POP AX						;Retira contador de linha horizontais da pilha
+	POP BX						;Retira comprimento da pilha
+	POP CX						;Retira valor X inicial da pilha
+	POP DX						;Retira valor Y inicial da pilha
+	INC DX							;Incrementa valor Y
+	DEC AH						;Decrementa contador 
+	PUSH DX						;Guarda valor Y inicial na pilha
+	PUSH CX						;Guarda valor X inicial na pilha
+	PUSH BX						;Guarda comprimento na pilha
+	JMP STARTDS
+
+ENDDS:
+	POP AX						;Retirar valores desnecessários da pilha
+	POP AX
+	POP AX
+	POP AX
+	RET
 DRAWSQUARE ENDP
 
 ;Desenha uma horizontal com ponto inicial (X,Y) e comprimento Z
