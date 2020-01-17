@@ -817,6 +817,8 @@ ENDGAME PROC NEAR
 	MOV AH,13		;Verifica a cor do pixel no canto superior esquerdo
 	INT 10H
 	CMP AL,2			;Se AL = 2 significa que o pixel é verde
+	JE COLLISIONED	
+	CMP AL,4			;Se AL = 4 significa que o pixel é vermelho
 	JE COLLISIONED
 	POP CX			;Retira valor X da pilha
 	POP DX			;Retira valor Y da pilha
@@ -826,6 +828,8 @@ ENDGAME PROC NEAR
 	MOV AH,13		;Verifica a cor do pixel no canto superior direito
 	INT 10H
 	CMP AL,2			;Se AL = 2 significa que o pixel é verde
+	JE COLLISIONED	
+	CMP AL,4			;Se AL = 4 significa que o pixel é vermelho
 	JE COLLISIONED
 	POP CX			;Retira valor X da pilha
 	POP DX			;Retira valor Y da pilha
@@ -835,6 +839,8 @@ ENDGAME PROC NEAR
 	MOV AH,13		;Verifica a cor do pixel no canto inferior esquerdo
 	INT 10H
 	CMP AL,2			;Se AL = 2 significa que o pixel é verde
+	JE COLLISIONED	
+	CMP AL,4			;Se AL = 4 significa que o pixel é vermelho
 	JE COLLISIONED
 	POP CX			;Retira valor X da pilha
 	POP DX			;Retira valor Y da pilha
@@ -843,6 +849,8 @@ ENDGAME PROC NEAR
 	MOV AH,13		;Verifica a cor do pixel no canto inferior direito
 	INT 10H
 	CMP AL,2			;Se AL = 2 significa que o pixel é verde
+	JE COLLISIONED	
+	CMP AL,4			;Se AL = 4 significa que o pixel é vermelho
 	JE COLLISIONED2
 	RET					;Não chegou à meta
 	
@@ -890,7 +898,7 @@ REMOVECOIN PROC NEAR
 
 	XOR AX,AX					;Coloca AX a 0
 	MOV AL, 0					;Cor preta
-	MOV DX, COINS[BX + 0]	;Coordenada Y
+	MOV DX, COINS[BX + 0]	;Coordenada Y da moeda a remover
 	MOV CX, COINS[BX + 2]	;Coordenada X da moeda a remover
 	MOV BX,9					;Comprimento
 	CALL DRAWSQUARE				;Desenha quadrado preto
