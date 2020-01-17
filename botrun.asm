@@ -50,12 +50,13 @@ CODE SEGMENT PARA 'CODE'
 
 MAIN PROC FAR
 	; Inicialização
-	ASSUME CS:CODE, DS:DATA, ES:DATA, SS:STACK
+	ASSUME CS:CODE, DS:DATA, SS:STACK ;,ES:DATA,
 	PUSH DS
 	SUB AX, AX
 	PUSH AX
 	MOV AX, DATA
 	MOV DS, AX
+	MOV AX, 0A000h
 	MOV ES, AX
 	
 	;Importa dos dados do ficheiro lab.txt
@@ -91,17 +92,15 @@ MAIN PROC FAR
 	MOV BX,9					;Comprimento
 	CALL DRAWSQUARE		;Desenha quadrado
 	
-DRAW:	
+RECHECK:	
 	CALL CHECKEY			;Verifica se foi pressionada uma tecla
 	CMP  AL,0
-	JE DRAW						;Se não foi pressionada nenhuma tecla, volta a verificar
-	
-	CMP AL,'q'
+	JE RECHECK						;Se não foi pressionada nenhuma tecla, volta a verificar
+	CMP AL,'q'					;Se foi pressionado q, sai do jogo
 	JE EXITGAME
 	
 	CALL KEYPRESSED		;Toma acção de acordo com tecla pressionada
-	
-	JE DRAW
+	JMP RECHECK					;Verifica novamente se alguma tecla foi pressionada
 	
 EXITGAME:	
 	MOV AH,00H	;Definir modo texto
@@ -274,7 +273,9 @@ CLOSEFILE ENDP
 ;	- AL - ASCII da tecla pressionada
 KEYPRESSED PROC NEAR
 
-	XOR AH,AH
+	XOR AH,AH						;Garante AH a 0
+	MOV DX,YROBOT				;Obtém o valor Y do robot actual
+	MOV CX,XROBOT				;Obtém o valor X do robot actual
 
 	CMP AL,'i'			;Se foi pressionada a tecla 'i', movimento para cima
 	JE GOUP
@@ -285,28 +286,55 @@ KEYPRESSED PROC NEAR
 	CMP AL,'l'			;Se foi pressionada a tecla 'l', movimento para a direita
 	JE GORIGHT
 	CMP AL,'s'		;Se foi pressionada a tecla 's', guarda screenshot do jogo
+	JE SCRSHOT
 	CMP AL,'p'		;Se foi pressionada a tecla 'p', o jogo pára
+	JE STOPGAME
 	RET					;Se não foi pressionada nenhuma tecla válida, sai sem efectuar qualquer acção
 	
 GOUP:
 	;Verificar se há colisão com monstro, parede ou moeda
+	;Verifica se vai colidir com uma parede
+	DEC DX							;Decrementa valor Y para verificação de colisão
+	CALL WALLCOLLISION
+	CMP BL,1							;Se BL = 1, há colisão, não pode avançar
+	JE ENDKP
 	CALL ROBOTUP
 	
 	RET
 GODOWN:
 	;Verificar se há colisão com monstro, parede ou moeda
+	;Verifica se vai colidir com uma parede
+	INC DX							;Incrementa valor Y para verificação de colisão
+	CALL WALLCOLLISION
+	CMP BL,1							;Se BL = 1, há colisão, não pode avançar
+	JE ENDKP
 	CALL ROBOTDOWN
 	
 	RET
 GOLEFT:
 	;Verificar se há colisão com monstro, parede ou moeda
+	;Verifica se vai colidir com uma parede
+	DEC CX							;Decrementa valor X para verificação de colisão
+	CALL WALLCOLLISION
+	CMP BL,1							;Se BL = 1, há colisão, não pode avançar
+	JE ENDKP
 	CALL ROBOTLEFT
 
 	RET
 GORIGHT:
 	;Verificar se há colisão com monstro, parede ou moeda
+	;Verifica se vai colidir com uma parede
+	INC CX							;Incrementa valor X para verificação de colisão
+	CALL WALLCOLLISION
+	CMP BL,1							;Se BL = 1, há colisão, não pode avançar
+	JE ENDKP
 	CALL ROBOTRIGHT
+	
+	RET
+SCRSHOT:
+STOPGAME:
 
+ENDKP:
 	RET
 KEYPRESSED ENDP
 
@@ -410,17 +438,70 @@ ROBOTRIGHT ENDP
 ; OUTPUT:
 ;	- AL : ASCII da tecla pressionada
 CHECKEY PROC NEAR
+
 	XOR AL,AL	;AL a zero - Se uma tecla for pressionada, será onde ficará guardada a mesma
 	MOV AH,01	;Permite verificar se existe alguma tecla no buffer do teclado (Significa que uma tecla foi pressionada)
 	INT 16H		;Interrução 16h - Keyboard I/O Service
 	JZ ENDCK		;Se Zero Flag = 1, buffer vazio (Não foi pressionada nenhuma tecla)
-	MOV AH,0	;Coloca ASCII code da tecla pressionada em AL e limpa o buffer do teclado
+	MOV AH,00	;Coloca ASCII code da tecla pressionada em AL e limpa o buffer do teclado
 	INT 16H
 	
 ENDCK:
 	RET
 
 CHECKEY ENDP
+
+;Verifica se existe uma colisão do robot com uma parede
+; INPUT:
+;	- DX: Valor Y do canto superior esquerdo do robot actualizado
+;	- CX: Valor X do canto superior esquerdo do robot actualizado
+; OUTPUT:
+;	- BL: Se BL = 1, colisão
+WALLCOLLISION PROC NEAR
+	
+	XOR AL,AL		;Garante AL a zero
+	XOR BX,BX		;Garante BH a 0 para a cor do pixel ser verificada na primeira display page e BL = 0 para verificação de colisão
+	PUSH DX			;Guarda valor Y na pilha
+	PUSH CX			;Guarda valor X na pilha
+	MOV AH,13		;Verifica a cor do pixel no canto superior esquerdo
+	INT 10H
+	CMP AL,1			;Se AL = 1 significa que o pixel é azul, vai haver colisão.
+	JE COLLISION
+	POP CX			;Retira valor X da pilha
+	POP DX			;Retira valor Y da pilha
+	PUSH DX			;Guarda valor Y na pilha
+	PUSH CX			;Guarda valor X na pilha
+	ADD CX,8
+	MOV AH,13		;Verifica a cor do pixel no canto superior direito
+	INT 10H
+	CMP AL,1			;Se AL = 1 significa que o pixel é azul, vai haver colisão.
+	JE COLLISION
+	POP CX			;Retira valor X da pilha
+	POP DX			;Retira valor Y da pilha
+	PUSH DX			;Guarda valor Y na pilha
+	PUSH CX			;Guarda valor X na pilha
+	ADD DX,8
+	MOV AH,13		;Verifica a cor do pixel no canto inferior esquerdo
+	INT 10H
+	CMP AL,1			;Se AL = 1 significa que o pixel é azul, vai haver colisão.
+	JE COLLISION
+	POP CX			;Retira valor X da pilha
+	POP DX			;Retira valor Y da pilha
+	ADD CX,8
+	ADD DX,8
+	MOV AH,13		;Verifica a cor do pixel no canto inferior direito
+	INT 10H
+	CMP AL,1			;Se AL = 1 significa que o pixel é azul, vai haver colisão.
+	JE COLLISION
+	RET					;Não há colisão
+	
+	
+COLLISION:	
+	POP CX			;Retira valores desnecessários da pilha
+	POP CX
+	MOV BL,1
+	RET
+WALLCOLLISION ENDP
 
 ;Desenha as paredes de jogo
 ;INPUT:
@@ -636,7 +717,6 @@ LHORIZONTAL ENDP
 ;	- BL: Comprimento da linha
 LVERTICAL PROC NEAR
 		XOR BH,BH		;Garante BH a zero, para que seja desenhado sempre na primeira display page
-		; INC BL				;Corrige problema com o desenho do pixel inferior direito
 STARTLV:
 		CMP BX,0			;Verifica se desenhou a reta completa
 		JLE FIMLV
