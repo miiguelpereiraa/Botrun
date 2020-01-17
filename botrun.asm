@@ -42,6 +42,9 @@ DATA SEGMENT PARA 'DATA'
 	COINS DW 38,82,57,37,76,82,76,127,96,52,96,97,102,184,157,212,157,147
 	;Número de moedas
 	NCOINS DB 9
+	
+	;Score do jogador
+	SCORE DB ?
 
 
 DATA ENDS
@@ -50,13 +53,12 @@ CODE SEGMENT PARA 'CODE'
 
 MAIN PROC FAR
 	; Inicialização
-	ASSUME CS:CODE, DS:DATA, SS:STACK ;,ES:DATA,
+	ASSUME CS:CODE, DS:DATA, SS:STACK, ES:DATA
 	PUSH DS
 	SUB AX, AX
 	PUSH AX
 	MOV AX, DATA
 	MOV DS, AX
-	MOV AX, 0A000h
 	MOV ES, AX
 	
 	;Importa dos dados do ficheiro lab.txt
@@ -298,6 +300,12 @@ GOUP:
 	CALL WALLCOLLISION
 	CMP BL,1							;Se BL = 1, há colisão, não pode avançar
 	JE ENDKP
+	
+	MOV DX,YROBOT				;Obtém o valor Y do robot actual
+	MOV CX,XROBOT				;Obtém o valor X do robot actual
+	DEC DX
+	CALL COINCOLLISION
+
 	CALL ROBOTUP
 	
 	RET
@@ -308,6 +316,12 @@ GODOWN:
 	CALL WALLCOLLISION
 	CMP BL,1							;Se BL = 1, há colisão, não pode avançar
 	JE ENDKP
+	
+	MOV DX,YROBOT				;Obtém o valor Y do robot actual
+	MOV CX,XROBOT				;Obtém o valor X do robot actual
+	ADD DX,9
+	CALL COINCOLLISION
+	
 	CALL ROBOTDOWN
 	
 	RET
@@ -318,6 +332,12 @@ GOLEFT:
 	CALL WALLCOLLISION
 	CMP BL,1							;Se BL = 1, há colisão, não pode avançar
 	JE ENDKP
+	
+	MOV DX,YROBOT				;Obtém o valor Y do robot actual
+	MOV CX,XROBOT				;Obtém o valor X do robot actual
+	DEC CX
+	CALL COINCOLLISION
+	
 	CALL ROBOTLEFT
 
 	RET
@@ -328,6 +348,12 @@ GORIGHT:
 	CALL WALLCOLLISION
 	CMP BL,1							;Se BL = 1, há colisão, não pode avançar
 	JE ENDKP
+	
+	MOV DX,YROBOT				;Obtém o valor Y do robot actual
+	MOV CX,XROBOT				;Obtém o valor X do robot actual
+	ADD CX,9
+	CALL COINCOLLISION
+	
 	CALL ROBOTRIGHT
 	
 	RET
@@ -456,6 +482,8 @@ CHECKEY ENDP
 ;	- DX: Valor Y do canto superior esquerdo do robot actualizado
 ;	- CX: Valor X do canto superior esquerdo do robot actualizado
 ; OUTPUT:
+;	- DX: Valor Y no qual foi detectada a colisão
+;	- CX: Valor X no qual foi detectada a colisão
 ;	- BL: Se BL = 1, colisão
 WALLCOLLISION PROC NEAR
 	
@@ -502,6 +530,143 @@ COLLISION:
 	MOV BL,1
 	RET
 WALLCOLLISION ENDP
+
+;Verifica se existe uma colisão do robot com uma moeda
+; INPUT:
+;	- DX: Valor Y do canto superior esquerdo do robot actualizado
+;	- CX: Valor X do canto superior esquerdo do robot actualizado
+; OUTPUT:
+;	- BL: Se BL = 1, colisão
+COINCOLLISION PROC NEAR
+	
+	PUSH DX		;Guarda valor Y inicial na pilha
+	PUSH CX		;Guarda valor X inicial na pilha
+	MOV BL,8
+	CALL COLORVERT
+	CMP BL,0		;Se BL = 0, não há colisão
+	JE VERIFHORIZ
+	POP CX		;Retia valor Y desnecessário da pilha
+	POP CX		;Retira valor X a verificar da pilha
+	PUSH DX		;Guarda coordenada Y da moeda na pilha
+	ADD DX,2		;Usa a coordenada Y onde foi encontrada a cor castanha em COLORVERT, para encontrar a coordenada X da moeda
+	MOV BL,8
+	CALL COLORHORIZ
+	;desenhar quadrado preto nas coordenadas encontradas e aumentar o score
+	POP DX		;Recuperar Y da moeda
+	MOV AL,0		;Cor preta
+	MOV BX,9	
+	CALL DRAWSQUARE		;Apagar a moeda desenhando um quadrado preto por cima
+	INC SCORE
+	RET
+	
+VERIFHORIZ:
+	POP CX		;Retira valor X inicial da pilha
+	POP DX		;Retira valor Y inicial da pilha
+	PUSH DX		;Guarda valor Y inicial na pilha
+	MOV BL,8
+	CALL COLORHORIZ
+	CMP BL,0
+	JE NOCOL
+	POP DX		;Retira valor Y inicial guardado na pilha
+	PUSH CX		;Guarda coordenada X da moeda na pilha
+	ADD CX,2
+	MOV BL,8
+	CALL COLORVERT
+	;Desenhar quadrado preto nas coordenadas encontradas e aumentar o score
+	POP CX		;recuperar X da moeda
+	MOV AL,0
+	MOV BX,9
+	CALL DRAWSQUARE
+	INC SCORE
+	RET
+
+NOCOL:
+	POP AX
+	RET
+
+COINCOLLISION ENDP
+
+; Verifica se num dado comprimento vertical, existe a cor castanha, sinal de existencia de uma moeda
+; e devolve a coordenada Y inicial da moeda detectada 
+; INPUT
+;	- DX: Valor Y inicial a verificar
+;	- CX: Valor X inicial a verificar
+;	- BL: Comprimento a verificar
+; OUTPUT
+;	- BL: Se BL = 1, foi detectada uma moeda
+;	- DX: Valor Y inicial da moeda detectada
+COLORVERT PROC NEAR
+		XOR BH,BH		;Garante BH a 0 para a cor do pixel ser verificada na primeira display page
+VERIFBROWN:			;Verifica para baixo se existe um pixel castanho
+		CMP BL,0			;Confirma se verificou o comprimento completo
+		JLE FIMCV
+		MOV AH,13		;Verifica a cor do pixel
+		INT 10H
+		CMP AL,6			;Se AL = 6, existe a cor castanha
+		JE VERIFYELLOW
+		DEC BL				;Decrementa comprimento
+		INC DX				;Incrementa Y
+		JMP VERIFBROWN
+	
+VERIFYELLOW:			;Verifica para cima quando existe um pixel amarelo, para devolver a coordenada Y correcta da moeda
+		DEC DX			;Decrementa Y
+		MOV AH,13		;Verifica a cor do pixel
+		INT 10H
+		CMP AL,14			;Se AL = 14, existe a cor amarela
+		JE COLLISIONCV
+		JMP VERIFYELLOW
+
+COLLISIONCV:
+		MOV BL,1			;Confirma que foi detectada uma moeda
+		DEC DX			;Valor Y inicial da moeda detectada
+		RET
+
+FIMCV:	
+		MOV BL,0			;Não foi detectada uma moeda
+		RET
+		
+COLORVERT ENDP
+
+; Verifica se num dado comprimento horizontal, existe a cor castanha, sinal de existencia de uma moeda
+; e devolve a coordenada X inicial da moeda detectada 
+; INPUT
+;	- DX: Valor Y inicial a verificar
+;	- CX: Valor X inicial a verificar
+;	- BL: Comprimento a verificar
+; OUTPUT
+;	- BL: Se BL = 1, foi detectada uma moeda
+;	- CX: Valor X inicial da moeda detectada
+COLORHORIZ PROC NEAR
+		XOR BH,BH		;Garante BH a 0 para a cor do pixel ser verificada na primeira display page
+VERIFBROWNH:			;Verifica para a direita se existe um pixel castanho
+		CMP BL,0			;Confirma se verificou o comprimento completo
+		JLE FIMCH
+		MOV AH,13		;Verifica a cor do pixel
+		INT 10H
+		CMP AL,6			;Se AL = 6, existe a cor castanha
+		JE VERIFYELLOWH
+		DEC BL			;Decrementa comprimento
+		INC CX				;Incrementa X
+		JMP VERIFBROWNH
+	
+VERIFYELLOWH:			;Verifica para a esquerda quando existe um pixel amarelo, para devolver a coordenada X correcta da moeda
+		DEC CX			;Decrementa X
+		MOV AH,13		;Verifica a cor do pixel
+		INT 10H
+		CMP AL,14			;Se AL = 14, existe a cor amarela
+		JE COLLISIONCH
+		JMP VERIFYELLOWH
+
+COLLISIONCH:
+		MOV BL,1			;Confirma que foi detectada uma moeda
+		DEC CX			;Valor X inicial da moeda detectada
+		RET
+
+FIMCH:	
+		MOV BL,0			;Não foi detectada uma moeda
+		RET
+		
+COLORHORIZ ENDP
 
 ;Desenha as paredes de jogo
 ;INPUT:
