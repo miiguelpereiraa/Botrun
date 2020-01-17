@@ -46,7 +46,7 @@ DATA SEGMENT PARA 'DATA'
 	NCOINS 	DB 	0
 	
 	;Score do jogador
-	SCORE DB ?
+	SCORE DB 0
 
 
 DATA ENDS
@@ -71,6 +71,7 @@ MAIN PROC FAR
 	MOV BX, lfhandle
 	CALL CLOSEFILE
 
+	;Importa os dados do ficheiro cont.txt
 	LEA DX, conttxt
 	CALL OPENFILE
 	MOV cfhandle, AX
@@ -95,6 +96,14 @@ MAIN PROC FAR
 	MOV CL,NCOINS		;Número de linhas no array de paredes
 	CALL DRAWCOINS
 	
+	;Desenha o quadrado da meta
+	XOR AX,AX					;Coloca AX a 0
+	MOV AL,2						;Cor verde
+	MOV DX,YEXIT			;Valor Y inicial
+	MOV CX,XEXIT			;Valor X inicial
+	MOV BX,9					;Comprimento
+	CALL DRAWSQUARE		;Desenha quadrado
+	
 	;Desenha o quadrado do robot
 	XOR AX,AX					;Coloca AX a 0
 	MOV AL,4						;Cor vermelha
@@ -111,8 +120,14 @@ RECHECK:
 	JE EXITGAME
 	
 	CALL KEYPRESSED		;Toma acção de acordo com tecla pressionada
+	CMP BL,99
+	JE WAITEXIT
 	JMP RECHECK					;Verifica novamente se alguma tecla foi pressionada
-	
+
+WAITEXIT:
+	CALL CHECKEY
+	CMP AL,'q'
+	JNE WAITEXIT
 EXITGAME:	
 	MOV AH,00H	;Definir modo texto
 	MOV AL,02H
@@ -521,12 +536,18 @@ GOUP:
 	CMP BL,1							;Se BL = 1, há colisão, não pode avançar
 	JE ENDKP
 	
+	; MOV DX,YROBOT				;Obtém o valor Y do robot actual
+	; MOV CX,XROBOT				;Obtém o valor X do robot actual
+	; DEC DX
+	; CALL COINCOLLISION
+
+	CALL ROBOTUP
+	
 	MOV DX,YROBOT				;Obtém o valor Y do robot actual
 	MOV CX,XROBOT				;Obtém o valor X do robot actual
 	DEC DX
-	CALL COINCOLLISION
-
-	CALL ROBOTUP
+	CALL ENDGAME
+	
 	
 	RET
 GODOWN:
@@ -537,12 +558,17 @@ GODOWN:
 	CMP BL,1							;Se BL = 1, há colisão, não pode avançar
 	JE ENDKP
 	
-	MOV DX,YROBOT				;Obtém o valor Y do robot actual
-	MOV CX,XROBOT				;Obtém o valor X do robot actual
-	ADD DX,9
-	CALL COINCOLLISION
+	; MOV DX,YROBOT				;Obtém o valor Y do robot actual
+	; MOV CX,XROBOT				;Obtém o valor X do robot actual
+	; ADD DX,9
+	; CALL COINCOLLISION
 	
 	CALL ROBOTDOWN
+	
+	MOV DX,YROBOT				;Obtém o valor Y do robot actual
+	MOV CX,XROBOT				;Obtém o valor X do robot actual
+	INC DX
+	CALL ENDGAME
 	
 	RET
 GOLEFT:
@@ -553,12 +579,17 @@ GOLEFT:
 	CMP BL,1							;Se BL = 1, há colisão, não pode avançar
 	JE ENDKP
 	
+	; MOV DX,YROBOT				;Obtém o valor Y do robot actual
+	; MOV CX,XROBOT				;Obtém o valor X do robot actual
+	; DEC CX
+	; CALL COINCOLLISION
+	
+	CALL ROBOTLEFT
+	
 	MOV DX,YROBOT				;Obtém o valor Y do robot actual
 	MOV CX,XROBOT				;Obtém o valor X do robot actual
 	DEC CX
-	CALL COINCOLLISION
-	
-	CALL ROBOTLEFT
+	CALL ENDGAME
 
 	RET
 GORIGHT:
@@ -569,12 +600,17 @@ GORIGHT:
 	CMP BL,1							;Se BL = 1, há colisão, não pode avançar
 	JE ENDKP
 	
-	MOV DX,YROBOT				;Obtém o valor Y do robot actual
-	MOV CX,XROBOT				;Obtém o valor X do robot actual
-	ADD CX,9
-	CALL COINCOLLISION
+	; MOV DX,YROBOT				;Obtém o valor Y do robot actual
+	; MOV CX,XROBOT				;Obtém o valor X do robot actual
+	; ADD CX,9
+	; CALL COINCOLLISION
 	
 	CALL ROBOTRIGHT
+	
+	MOV DX,YROBOT				;Obtém o valor Y do robot actual
+	MOV CX,XROBOT				;Obtém o valor X do robot actual
+	INC CX	
+	CALL ENDGAME
 	
 	RET
 SCRSHOT:
@@ -740,16 +776,71 @@ WALLCOLLISION PROC NEAR
 	MOV AH,13		;Verifica a cor do pixel no canto inferior direito
 	INT 10H
 	CMP AL,1			;Se AL = 1 significa que o pixel é azul, vai haver colisão.
-	JE COLLISION
+	JE COLLISION2
 	RET					;Não há colisão
 	
 	
 COLLISION:	
 	POP CX			;Retira valores desnecessários da pilha
 	POP CX
+COLLISION2:
 	MOV BL,1
 	RET
 WALLCOLLISION ENDP
+
+; Verificar se o robot chegou à linha da meta
+; INPUT:
+;	- DX: Valor Y do canto superior esquerdo do robot actualizado
+;	- CX: Valor X do canto superior esquerdo do robot actualizado
+; OUTPUT:
+;	- BL: Se BL = 99, terminou
+ENDGAME PROC NEAR
+
+	XOR AL,AL		;Garante AL a zero
+	XOR BX,BX		;Garante BH a 0 para a cor do pixel ser verificada na primeira display page e BL = 0 para verificação de colisão
+	PUSH DX			;Guarda valor Y na pilha
+	PUSH CX			;Guarda valor X na pilha
+	MOV AH,13		;Verifica a cor do pixel no canto superior esquerdo
+	INT 10H
+	CMP AL,2			;Se AL = 2 significa que o pixel é verde
+	JE COLLISIONED
+	POP CX			;Retira valor X da pilha
+	POP DX			;Retira valor Y da pilha
+	PUSH DX			;Guarda valor Y na pilha
+	PUSH CX			;Guarda valor X na pilha
+	ADD CX,8
+	MOV AH,13		;Verifica a cor do pixel no canto superior direito
+	INT 10H
+	CMP AL,2			;Se AL = 2 significa que o pixel é verde
+	JE COLLISIONED
+	POP CX			;Retira valor X da pilha
+	POP DX			;Retira valor Y da pilha
+	PUSH DX			;Guarda valor Y na pilha
+	PUSH CX			;Guarda valor X na pilha
+	ADD DX,8
+	MOV AH,13		;Verifica a cor do pixel no canto inferior esquerdo
+	INT 10H
+	CMP AL,2			;Se AL = 2 significa que o pixel é verde
+	JE COLLISIONED
+	POP CX			;Retira valor X da pilha
+	POP DX			;Retira valor Y da pilha
+	ADD CX,8
+	ADD DX,8
+	MOV AH,13		;Verifica a cor do pixel no canto inferior direito
+	INT 10H
+	CMP AL,2			;Se AL = 2 significa que o pixel é verde
+	JE COLLISIONED2
+	RET					;Não chegou à meta
+	
+	
+COLLISIONED:	
+	POP CX			;Retira valores desnecessários da pilha
+	POP CX
+COLLISIONED2:
+	MOV BL,99
+	RET
+	
+ENDGAME ENDP
 
 ;Verifica se existe uma colisão do robot com uma moeda
 ; INPUT:
