@@ -90,6 +90,12 @@ MAIN PROC FAR
 	MOV CL,NWALLS		;Número de linhas no array de paredes
 	CALL DRAWALLS		;Desenhar as paredes
 	
+	;Desenhar os monstros
+	LEA SI,MONSTERS	;Array de monstros
+	XOR CX,CX				;CX a zero
+	MOV CL,NMONSTERS	;Número de monstros no array
+	CALL DRAWMONSTERS		;Desenhar os monstros
+	
 	;Desenha as moedas de jogo
 	LEA SI,COINS			;Array de paredes
 	XOR CX,CX				;CX a zero
@@ -106,7 +112,7 @@ MAIN PROC FAR
 	
 	;Desenha o quadrado do robot
 	XOR AX,AX					;Coloca AX a 0
-	MOV AL,4						;Cor vermelha
+	MOV AL,5						;Cor magenta
 	MOV DX,YROBOT			;Valor Y inicial
 	MOV CX,XROBOT			;Valor X inicial
 	MOV BX,9					;Comprimento
@@ -642,8 +648,8 @@ ROBOTUP PROC NEAR
 	
 	DEC YROBOT				;Decrementa Y do robot
 
-	;Desenha linha vermelha horizontal em cima
-	MOV AL,4						;Cor vermelha
+	;Desenha linha magenta horizontal em cima
+	MOV AL,5						;Cor magenta
 	MOV DX,YROBOT			;Valor Y inicial
 	MOV CX,XROBOT			;Valor X inicial
 	MOV BX,9					;Comprimento
@@ -665,8 +671,8 @@ ROBOTDOWN PROC NEAR
 	
 	INC YROBOT				;Incrementa Y do robot
 	
-	;Desenha linha vermelha horizontal em baixo
-	MOV AL,4						;Cor vermelha
+	;Desenha linha magenta horizontal em baixo
+	MOV AL,5						;Cor magenta
 	MOV DX,YROBOT			;Valor Y inicial
 	ADD DX,8						;Y + 8 para desenhar a linha inferior do quadrado
 	MOV CX,XROBOT			;Valor X inicial
@@ -690,8 +696,8 @@ ROBOTLEFT PROC NEAR
 	
 	DEC XROBOT				;Decrementa X do robot
 	
-	;Desenha linha vermelha vertical à esquerda
-	MOV AL,4						;Cor vermelha
+	;Desenha linha magenta vertical à esquerda
+	MOV AL,5						;Cor magenta
 	MOV DX,YROBOT			;Valor Y inicial
 	MOV CX,XROBOT			;Valor X inicial
 	MOV BX,9					;Comprimento
@@ -713,8 +719,8 @@ ROBOTRIGHT PROC NEAR
 	
 	INC XROBOT				;Incrementa X do robot
 	
-	;Desenha linha vermelha vertical à direita
-	MOV AL,4						;Cor vermelha
+	;Desenha linha magenta vertical à direita
+	MOV AL,5						;Cor magenta
 	MOV DX,YROBOT			;Valor Y inicial
 	MOV CX,XROBOT			;Valor X inicial
 	ADD CX,8						;X + 8 para desenhar a linha da direita do quadrado 
@@ -880,30 +886,34 @@ CC_END:
 COLLISIONCOINS ENDP
 
 REMOVECOIN PROC NEAR
-	PUSH BX
+	PUSH BX			;Indice da moeda a remover
 
 	XOR AX,AX					;Coloca AX a 0
-	MOV AL, 0					;Cor vermelha
-	MOV DX, COINS[BX + 0]
-	MOV CX, COINS[BX + 2]
+	MOV AL, 0					;Cor preta
+	MOV DX, COINS[BX + 0]	;Coordenada Y
+	MOV CX, COINS[BX + 2]	;Coordenada X da moeda a remover
 	MOV BX,9					;Comprimento
-	CALL DRAWSQUARE				;Desenha quadrado
+	CALL DRAWSQUARE				;Desenha quadrado preto
 
-	DEC NCOINS
-	MOV BX, 00h
+	DEC NCOINS				;decrementar numero de moedas
+	MOV BX, 00h				;Vai buscar o indice da última moeda
 	MOV BL, NCOINS
 	SHL BX, 1
 	SHL BX, 1
 	
-	MOV DX, COINS[BX + 0]
-	MOV CX, COINS[BX + 2]
+	MOV DX, COINS[BX + 0]	;Guardar Y da moeda que fui buscar
+	MOV CX, COINS[BX + 2]	;Guardar X da moeda que fui buscar
 
-	POP BX
-	MOV COINS[BX + 0], DX
-	MOV COINS[BX + 2], CX
+	POP BX							;Buscar indice da moeda a remover a pilha
+	MOV COINS[BX + 0], DX	;Colocar Y da ultima moeda do array no inicio do array
+	MOV COINS[BX + 2], CX	;Colocar X da ultima moeda do array no inicio do array
+	INC SCORE						;Incrementa score
 	RET
 REMOVECOIN ENDP
 
+;INPUT
+; AX - Y do monstro
+; BX - X do monstro
 CHECKCOINCOLLISION PROC NEAR
 	MOV CX, YROBOT
 	ADD CX, 09H
@@ -1058,6 +1068,31 @@ STARTDW:
 ENDDW:
 		RET
 DRAWALLS ENDP
+
+;Desenha os monstros de jogo
+;INPUT:
+;	- SI: ARRAY de monstros
+;	- CX: Número de monstros no array
+DRAWMONSTERS PROC NEAR
+
+STARTDM:
+		CMP CX,0			;Verifica se todos os monstros foram desenhados
+		JE ENDDM
+		PUSH CX			;Guarda o valor de CX na pilha
+		MOV AL,4			;Cor vermelha
+		MOV DX,[SI]	;Valor Y inicial
+		ADD SI,2			
+		MOV CX,[SI]	;Valor X inicial
+		ADD SI,8
+		MOV BX,9
+		CALL DRAWSQUARE
+		POP CX			;Obtém novamente o valor de CX
+		DEC CX
+		JMP STARTDM
+		
+ENDDM:
+		RET
+DRAWMONSTERS ENDP
 
 ;Desenha um quadrado
 ;INPUT:
