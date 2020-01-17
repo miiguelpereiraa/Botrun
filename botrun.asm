@@ -6,6 +6,9 @@ DATA SEGMENT PARA 'DATA'
 	; Localização do ficheiro lab.txt
     labltxt	    db	'.\lab.txt', 0
 
+	; Localização do ficheiro conteudo.txt
+	conttxt		db	'.\conteudo.txt', 0
+
 	; Conteudo File Handle
 	cfhandle 	dw 	?
 
@@ -17,16 +20,15 @@ DATA SEGMENT PARA 'DATA'
 	; Número de bytes usado no buffer
 	lineSize	db	0
 	
-	;######################preenchimento "manual" temporário######################
 	;Coordenada Y inicial do robot
-	YROBOT 		DW 	94
+	YROBOT 		DW 	0
 	;Coordenada X inicial do robot
-	XROBOT 		DW 	5
+	XROBOT 		DW 	0
 	
 	;Coordenada Y da meta
-	YEND 		DW 	84	
+	YEXIT 		DW 	0	
 	;Coordenada X da meta
-	XEND 		DW 	225	
+	XEXIT 		DW 	0	
 	
 	;Array de paredes
 	WALLS 		DW 	400 dup(' ')
@@ -34,14 +36,14 @@ DATA SEGMENT PARA 'DATA'
 	NWALLS 		DB 	0
 	
 	;Array de monstros
-	;MONSTERS DW 36,150,1.00,'h',70,40,2.85,'v',100,165,3.25,'v',125,95,3.60,'h',155,130,1.35,'v'
+	MONSTERS 	DW 	50 DUP(0)
 	;Número de monstros 
-	NMONSTERS DB 5
+	NMONSTERS 	DB 	0
 	
 	;Array de moedas
-	COINS DW 38,82,57,37,76,82,76,127,96,52,96,97,102,184,157,212,157,147
+	COINS 	DW 	20 dup(0)
 	;Número de moedas
-	NCOINS DB 9
+	NCOINS 	DB 	0
 	
 	;Score do jogador
 	SCORE DB ?
@@ -69,6 +71,13 @@ MAIN PROC FAR
 	MOV BX, lfhandle
 	CALL CLOSEFILE
 
+	LEA DX, conttxt
+	CALL OPENFILE
+	MOV cfhandle, AX
+	CALL LOADCONT
+	MOV BX, cfhandle
+	CALL CLOSEFILE
+	
 	;Definição do modo gráfico de 320x200, 256 cores
 	MOV AH,00H	;Prepara para definir o modo gráfico
 	MOV AL,13H		;Modo gráfico 320x200, 256 cores
@@ -163,7 +172,6 @@ PN_1:
 	CMP AL, lineSize		; Comparar AL com lineSize
 	JL PN_2					; Se AL for inferior a lineSize então saltar para PN_2
 	PUSH CX					; Guardar o valor de CX
-	MOV BX, lfhandle		; Guardar em BX o handle do ficheiro de lab.txt
 	CALL READLINE			; Voltar a preenhcer o buffer (lineSize)
 	POP CX					; Restaurar o valor de CX
 	MOV SI, 00H				; Reiniciar o indice do buffer (lineSize)
@@ -174,14 +182,18 @@ PN_2:
 	; Se DL for espaço (20H) ou CR (0Dh) então sair do procedimento
 	CMP DL, 20H				; Comparar DL com espaço (20H)
 	JE PN_END				; Se DL for igual ao espaço (20H) então saltar fora
+	CMP DL, 2EH				; Comparar DL com . (2EH)
+	JE PN_END				; Se DL for igual ao . (2EH) então saltar fora
 	CMP DL, 0DH				; Comparar DL com CR (0DH)
 	JE PN_END				; Se DL for igual ao CR (0DH) então saltar fora
 	INC SI					; Incrementar SI
 	SUB DL, 30H				; Subtrair 30H de DL para obter o valor real
+	PUSH BX
 	PUSH DX					; Guardar o valor real na stack (porque MUL utiliza o DX)
 	MOV BX, 0AH				; Guardar 10 (em decimal) em BX
 	MUL BX					; Multiplicar AX por BX (multiplicar AX por 10)
 	POP DX					; Restaurar o valor de DX
+	POP BX
 	ADD AX, DX				; Somar DX ao AX (operação completa: AX = AX * 10 + DX)
 	LOOP PN_1				; Voltar a processar outro digito caso necessário
 PN_END:
@@ -221,6 +233,7 @@ LL_2:
 LL_3:
 	PUSH BX						; Guardar o valor de BX
 	PUSH CX						; Guardar o valor de CX
+	MOV BX, lfhandle
 	CALL PROCESSNUMBER			; Processar um número do buffer (fileLine)
 	POP CX						; Restaurar o valor de CX
 	POP BX						; Restaurar o valor de BX
@@ -256,8 +269,215 @@ LL_END:
 	RET
 LOADLAB ENDP
 
+PROCESSPLAYER PROC NEAR
+	INC SI
+	INC SI
+	; Definiar a linha do robo
+	MOV BX, cfhandle
+	CALL PROCESSNUMBER
+	MOV YROBOT, AX
+	INC SI
+	; Definiar a coluna do robo
+	MOV BX, cfhandle
+	CALL PROCESSNUMBER
+	MOV XROBOT, AX
+	RET
+PROCESSPLAYER ENDP
+
+PROCESSEXIT PROC NEAR
+	INC SI
+	INC SI
+	; Definiar a linha da meta
+	MOV BX, cfhandle
+	CALL PROCESSNUMBER
+	MOV YEXIT, AX
+	INC SI
+	; Definiar a coluna da meta
+	MOV BX, cfhandle
+	CALL PROCESSNUMBER
+	MOV XEXIT, AX
+	RET
+PROCESSEXIT ENDP
+
+PROCESSCOIN PROC NEAR
+	INC SI
+	INC SI
+	
+	; Definiar a linha da moeda
+	MOV BX, cfhandle
+	CALL PROCESSNUMBER
+
+	MOV BX, 00H
+	MOV BL, NCOINS
+	SHL BX, 1
+	SHL BX, 1
+
+	MOV COINS[BX + 0], AX
+	INC SI
+
+	; Definiar a coluna da moeda
+	MOV BX, cfhandle
+	CALL PROCESSNUMBER
+	
+	MOV BX, 00H
+	MOV BL, NCOINS
+	SHL BX, 1
+	SHL BX, 1
+	
+	MOV COINS[BX + 2], AX
+
+	; Incrementar o número de moedas
+	INC NCOINS
+	RET
+PROCESSCOIN ENDP
+
+PROCESSMONSTER PROC NEAR
+	INC SI
+	INC SI
+
+	; Definir a linha do monstro
+	MOV BX, cfhandle
+	CALL PROCESSNUMBER
+	
+	PUSH AX
+	MOV AX, 00H
+	MOV AL, NMONSTERS
+	MOV BX, 05H
+	MUL BX
+	MOV BX, AX
+	SHL BX, 1
+	POP AX
+	
+	MOV MONSTERS[BX + 0], AX
+	INC SI
+	
+	; Definir a coluna do monstro
+	MOV BX, cfhandle
+	CALL PROCESSNUMBER
+	
+	PUSH AX
+	MOV AX, 00H
+	MOV AL, NMONSTERS
+	MOV BX, 05H
+	MUL BX
+	MOV BX, AX
+	SHL BX, 1
+	POP AX
+
+	MOV MONSTERS[BX + 2], AX
+	INC SI
+
+	MOV BX, cfhandle
+	CALL PROCESSNUMBER
+	INC SI
+	PUSH AX
+	MOV BX, cfhandle
+	CALL PROCESSNUMBER
+	INC SI
+
+	MOV CX, AX
+	MOV BX, 64H
+	POP AX
+	MUL BX
+	ADD AX, CX
+	
+	PUSH AX
+	MOV AX, 00H
+	MOV AL, NMONSTERS
+	MOV BX, 05H
+	MUL BX
+	MOV BX, AX
+	SHL BX, 1
+	POP AX
+
+	MOV MONSTERS[BX + 6], AX
+
+	MOV AX, SI					; Guardar o valor de SI em AX
+	CMP AL, lineSize			; Comparar AL com lineSize
+	JL PM_1						; Se AL for inferior a lineSize então saltar para LL_2
+	MOV BX, cfhandle			; Guardar em BX o handle do ficheiro de lab.txt
+	CALL READLINE				; Voltar a preenhcer o buffer (lineSize)
+	MOV SI, 00H					; Reiniciar o indice do buffer (lineSize)
+PM_1:
+	MOV AX, 00H
+	MOV AL, fileLine[SI]
+	INC SI
+	
+	PUSH AX
+	MOV AX, 00H
+	MOV AL, NMONSTERS
+	MOV BX, 05H
+	MUL BX
+	MOV BX, AX
+	SHL BX, 1
+	POP AX
+
+	MOV MONSTERS[BX + 4], AX
+	INC NMONSTERS
+
+	RET
+PROCESSMONSTER ENDP
+
 ; Carrega o conteudo do ficheiro para a memória
 LOADCONT PROC NEAR
+	MOV BX, cfhandle
+	CALL READLINE
+	MOV SI, 00H
+LC_1:
+	MOV AX, SI
+	CMP AL, lineSize
+	JL LC_2
+	MOV BX, cfhandle
+	CALL READLINE
+	CMP lineSize, 00H
+	JE LC_END
+LC_2:
+	MOV AX, 00H
+	MOV AL, fileLine[SI]
+	CMP AL, 'r'
+	JE PROCESS_PLAYER
+	CMP AL, 'f'
+	JE PROCESS_EXIT
+	CMP AL, '$'
+	JE PROCESS_COIN
+	CMP AL, 'm'
+	JE PROCESS_MONSTER
+	JMP END_PROCESS
+PROCESS_PLAYER:
+	CALL PROCESSPLAYER
+	JMP END_PROCESS
+PROCESS_EXIT:
+	CALL PROCESSEXIT
+	JMP END_PROCESS
+PROCESS_COIN:
+	CALL PROCESSCOIN
+	JMP END_PROCESS
+PROCESS_MONSTER:
+	CALL PROCESSMONSTER
+END_PROCESS:
+	; Verificar se o buffer foi totalmente lido (se SI >= lineSize então todo o buffer foi lido)
+	; e se foi lido então voltar a ler mais 80 bytes do ficheiro e reiniciar o indice de leitura (SI).
+	; Se lineSize for igual a zero significa que n há mais conteudo para ler do ficheir lab.txt então
+	; é necessário sair do procedimento
+	MOV AX, SI					; Guardar o valor de SI em AX
+	CMP AL, lineSize			; Comparar AL com lineSize
+	JL LC_3						; Se AL for inferior a lineSize então saltar para LL_2
+	MOV BX, lfhandle			; Guardar em BX o handle do ficheiro de lab.txt
+	CALL READLINE				; Voltar a preenhcer o buffer (lineSize)
+	MOV SI, 00H					; Reiniciar o indice do buffer (lineSize)
+	CMP lineSize, 00H			; Comparar lineSize com 0
+	JE LC_END					; Se forem iguais então saltar fora
+LC_3:
+	; Incrementar SI até que SI aponte para o valor depois de 0AH (LF)
+	MOV AX, 00H				; Limpar AX
+	MOV AL, fileLine[SI]	; Copiar o byte do buffer (fileLine) no indice SI para AX
+	INC SI					; Incrementar SI
+	; Se AX for diferente de LF (0AH) então voltar a repetir desde LL_5
+	CMP AL, 0AH				; Comparar AL com LF (0AH)
+	JE LC_1					; Se forem iguals, então saltar para LL_1 (começar a processar uma nova parede)
+	JMP	END_PROCESS				; Saltar para LL_5
+LC_END:
+	RET
 LOADCONT ENDP
 
 ; Fecha um determinado ficheiro
