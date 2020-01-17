@@ -47,6 +47,15 @@ DATA SEGMENT PARA 'DATA'
 	
 	;Score do jogador
 	SCORE DB 0
+	
+	;Variáveis auxiliares
+	INFO1 DB "BotRun$"
+	INFO2 DB "Controls$"
+	INFO3 DB "i - up$"
+	INFO4 DB "k - down$"
+	INFO5 DB "j - left$"
+	INFO6 DB "l - right$"
+	INFO7 DB "SCORE$"
 
 
 DATA ENDS
@@ -117,6 +126,8 @@ MAIN PROC FAR
 	MOV CX,XROBOT			;Valor X inicial
 	MOV BX,9					;Comprimento
 	CALL DRAWSQUARE		;Desenha quadrado
+	
+	CALL DISPLAYINFO
 	
 RECHECK:	
 	CALL CHECKEY			;Verifica se foi pressionada uma tecla
@@ -916,6 +927,14 @@ REMOVECOIN PROC NEAR
 	MOV COINS[BX + 0], DX	;Colocar Y da ultima moeda do array no inicio do array
 	MOV COINS[BX + 2], CX	;Colocar X da ultima moeda do array no inicio do array
 	INC SCORE						;Incrementa score
+	;Actualizar score no ecra
+	MOV DH,16
+	MOV DL,31
+	CALL MOVECURS
+	MOV AH,2
+	MOV DL,30H
+	ADD DL,SCORE
+	INT 21H
 	RET
 REMOVECOIN ENDP
 
@@ -1282,6 +1301,79 @@ STARTLV:
 FIMLV:	
 		RET
 LVERTICAL ENDP
+
+;Display de informação
+DISPLAYINFO PROC NEAR
+	MOV DH,1
+	MOV DL,32
+	CALL MOVECURS
+	MOV AH,9
+	LEA DX,INFO1
+	INT 21H
+	
+	MOV DH,4
+	MOV DL,31
+	CALL MOVECURS
+	MOV AH,9
+	LEA DX,INFO2
+	INT 21H
+	
+	MOV DH,6
+	MOV DL,31
+	CALL MOVECURS
+	MOV AH,9
+	LEA DX,INFO3
+	INT 21H
+	
+	MOV DH,8
+	MOV DL,31
+	CALL MOVECURS
+	MOV AH,9
+	LEA DX,INFO4
+	INT 21H
+	
+	MOV DH,10
+	MOV DL,31
+	CALL MOVECURS
+	MOV AH,9
+	LEA DX,INFO5
+	INT 21H
+	
+	MOV DH,12
+	MOV DL,31
+	CALL MOVECURS
+	MOV AH,9
+	LEA DX,INFO6
+	INT 21H
+	
+	MOV DH,14
+	MOV DL,31
+	CALL MOVECURS
+	MOV AH,9
+	LEA DX,INFO7
+	INT 21H
+	
+	MOV DH,16
+	MOV DL,31
+	CALL MOVECURS
+	MOV AH,2
+	MOV DL,30H
+	ADD DL,SCORE
+	INT 21H
+	
+	RET
+DISPLAYINFO ENDP
+
+; Move o cursor para a posição desejada
+; INPUT:
+;	- DH - linha do cursor 
+;	- DL - coluna do cursor 
+MOVECURS proc
+    MOV BH, 0   ;display page
+    MOV AH, 2
+    INT 10H
+    RET
+MOVECURS endp
 
 CODE ENDS
 
