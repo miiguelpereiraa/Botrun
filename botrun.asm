@@ -71,11 +71,7 @@ MAIN PROC FAR
 	MOV BX, lfhandle
 	CALL CLOSEFILE
 
-<<<<<<< HEAD
-	;Importa os dados do ficheiro cont.txt
-=======
 	;Importa dos dados do ficheiro conteudo.txt
->>>>>>> 0c3277e17334a0d4ada03f8c41da3070e07b932a
 	LEA DX, conttxt
 	CALL OPENFILE
 	MOV cfhandle, AX
