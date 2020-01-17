@@ -556,10 +556,7 @@ GOUP:
 	CMP BL,1							;Se BL = 1, há colisão, não pode avançar
 	JE ENDKP
 	
-	; MOV DX,YROBOT				;Obtém o valor Y do robot actual
-	; MOV CX,XROBOT				;Obtém o valor X do robot actual
-	; DEC DX
-	; CALL COINCOLLISION
+	CALL COLLISIONCOINS
 
 	CALL ROBOTUP
 	
@@ -578,10 +575,7 @@ GODOWN:
 	CMP BL,1							;Se BL = 1, há colisão, não pode avançar
 	JE ENDKP
 	
-	; MOV DX,YROBOT				;Obtém o valor Y do robot actual
-	; MOV CX,XROBOT				;Obtém o valor X do robot actual
-	; ADD DX,9
-	; CALL COINCOLLISION
+	CALL COLLISIONCOINS
 	
 	CALL ROBOTDOWN
 	
@@ -599,10 +593,7 @@ GOLEFT:
 	CMP BL,1							;Se BL = 1, há colisão, não pode avançar
 	JE ENDKP
 	
-	; MOV DX,YROBOT				;Obtém o valor Y do robot actual
-	; MOV CX,XROBOT				;Obtém o valor X do robot actual
-	; DEC CX
-	; CALL COINCOLLISION
+	CALL COLLISIONCOINS
 	
 	CALL ROBOTLEFT
 	
@@ -620,10 +611,7 @@ GORIGHT:
 	CMP BL,1							;Se BL = 1, há colisão, não pode avançar
 	JE ENDKP
 	
-	; MOV DX,YROBOT				;Obtém o valor Y do robot actual
-	; MOV CX,XROBOT				;Obtém o valor X do robot actual
-	; ADD CX,9
-	; CALL COINCOLLISION
+	CALL COLLISIONCOINS
 	
 	CALL ROBOTRIGHT
 	
@@ -862,60 +850,86 @@ COLLISIONED2:
 	
 ENDGAME ENDP
 
-;Verifica se existe uma colisão do robot com uma moeda
-; INPUT:
-;	- DX: Valor Y do canto superior esquerdo do robot actualizado
-;	- CX: Valor X do canto superior esquerdo do robot actualizado
-; OUTPUT:
-;	- BL: Se BL = 1, colisão
-COINCOLLISION PROC NEAR
-	
-	PUSH DX		;Guarda valor Y inicial na pilha
-	PUSH CX		;Guarda valor X inicial na pilha
-	MOV BL,8
-	CALL COLORVERT
-	CMP BL,0		;Se BL = 0, não há colisão
-	JE VERIFHORIZ
-	POP CX		;Retia valor Y desnecessário da pilha
-	POP CX		;Retira valor X a verificar da pilha
-	PUSH DX		;Guarda coordenada Y da moeda na pilha
-	ADD DX,2		;Usa a coordenada Y onde foi encontrada a cor castanha em COLORVERT, para encontrar a coordenada X da moeda
-	MOV BL,8
-	CALL COLORHORIZ
-	;desenhar quadrado preto nas coordenadas encontradas e aumentar o score
-	POP DX		;Recuperar Y da moeda
-	MOV AL,0		;Cor preta
-	MOV BX,9	
-	CALL DRAWSQUARE		;Apagar a moeda desenhando um quadrado preto por cima
-	INC SCORE
-	RET
-	
-VERIFHORIZ:
-	POP CX		;Retira valor X inicial da pilha
-	POP DX		;Retira valor Y inicial da pilha
-	PUSH DX		;Guarda valor Y inicial na pilha
-	MOV BL,8
-	CALL COLORHORIZ
-	CMP BL,0
-	JE NOCOL
-	POP DX		;Retira valor Y inicial guardado na pilha
-	PUSH CX		;Guarda coordenada X da moeda na pilha
-	ADD CX,2
-	MOV BL,8
-	CALL COLORVERT
-	;Desenhar quadrado preto nas coordenadas encontradas e aumentar o score
-	POP CX		;recuperar X da moeda
-	MOV AL,0
-	MOV BX,9
-	CALL DRAWSQUARE
-	INC SCORE
-	RET
+COLLISIONCOINS PROC NEAR
+	MOV CX, 00H
+	MOV CL, NCOINS
+CC_1:
+	MOV BX, 00H
+	MOV BL, NCOINS
+	SUB BX, CX
+	SHL BX, 1
+	SHL BX, 1
 
-NOCOL:
-	POP AX
-	RET
+	PUSH CX
+	PUSH BX
 
-COINCOLLISION ENDP
+	MOV AX, COINS[BX + 0]
+	MOV BX, COINS[BX + 2]
+	CALL CHECKCOINCOLLISION
+	POP BX
+	POP CX
+
+	CMP AX, 01H
+	JE CC_2
+	LOOP CC_1
+	JMP CC_END
+CC_2:
+	CALL REMOVECOIN
+CC_END:
+	RET
+COLLISIONCOINS ENDP
+
+REMOVECOIN PROC NEAR
+	PUSH BX
+
+	XOR AX,AX					;Coloca AX a 0
+	MOV AL, 0					;Cor vermelha
+	MOV DX, COINS[BX + 0]
+	MOV CX, COINS[BX + 2]
+	MOV BX,9					;Comprimento
+	CALL DRAWSQUARE				;Desenha quadrado
+
+	DEC NCOINS
+	MOV BX, 00h
+	MOV BL, NCOINS
+	SHL BX, 1
+	SHL BX, 1
+	
+	MOV DX, COINS[BX + 0]
+	MOV CX, COINS[BX + 2]
+
+	POP BX
+	MOV COINS[BX + 0], DX
+	MOV COINS[BX + 2], CX
+	RET
+REMOVECOIN ENDP
+
+CHECKCOINCOLLISION PROC NEAR
+	MOV CX, YROBOT
+	ADD CX, 09H
+	MOV DX, XROBOT
+	ADD DX, 09H
+
+	CMP CX, AX
+	JL CCC_END
+	CMP DX, BX
+	JL CCC_END
+
+	ADD AX, 09H
+	ADD BX, 09H
+	MOV CX, YROBOT
+	MOV DX, XROBOT
+
+	CMP AX, CX
+	JL CCC_END
+	CMP BX, DX
+	JL CCC_END
+	MOV AX, 01H
+	JMP CCC_END
+	MOV AX, 00H
+CCC_END:
+	RET
+CHECKCOINCOLLISION ENDP
 
 ; Verifica se num dado comprimento vertical, existe a cor castanha, sinal de existencia de uma moeda
 ; e devolve a coordenada Y inicial da moeda detectada 
