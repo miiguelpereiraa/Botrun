@@ -71,13 +71,14 @@ MAIN PROC FAR
 	MOV BX, lfhandle
 	CALL CLOSEFILE
 
+	;Importa dos dados do ficheiro conteudo.txt
 	LEA DX, conttxt
 	CALL OPENFILE
 	MOV cfhandle, AX
 	CALL LOADCONT
 	MOV BX, cfhandle
 	CALL CLOSEFILE
-	
+
 	;Definição do modo gráfico de 320x200, 256 cores
 	MOV AH,00H	;Prepara para definir o modo gráfico
 	MOV AL,13H		;Modo gráfico 320x200, 256 cores
@@ -269,36 +270,56 @@ LL_END:
 	RET
 LOADLAB ENDP
 
+; Inicializa YROBOT e XROBOT com os dados do fileLine
+; INOUT:
+;		- fileLine: Buffer de onde importar os dados
+;		- SI: Indice para o buffer
+; OUTPUT:
+; 		- YROBOT: Coordenada Y
+;		- XROBOT: Coordenada X
 PROCESSPLAYER PROC NEAR
+	INC SI						; Avançar com SI para o primeiro digito da coordenada Y
 	INC SI
-	INC SI
-	; Definiar a linha do robo
+	; Processar a coordenada Y e guardar em YROBOT
 	MOV BX, cfhandle
 	CALL PROCESSNUMBER
 	MOV YROBOT, AX
-	INC SI
-	; Definiar a coluna do robo
+
+	INC SI						; Avançar com SI para o primeiro digito da coordenada X
+
+	; Processar a coordenada X e guardar em XROBOT
 	MOV BX, cfhandle
 	CALL PROCESSNUMBER
 	MOV XROBOT, AX
+
 	RET
 PROCESSPLAYER ENDP
 
+; Inicializa YEXIT e XEXIT com os dados do fileLine
+; INOUT:
+;		- fileLine: Buffer de onde importar os dados
+;		- SI: Indice para o buffer
+; OUTPUT:
+; 		- YEXIT: Coordenada Y
+;		- XEXIT: Coordenada X
 PROCESSEXIT PROC NEAR
 	INC SI
 	INC SI
-	; Definiar a linha da meta
 	MOV BX, cfhandle
 	CALL PROCESSNUMBER
 	MOV YEXIT, AX
 	INC SI
-	; Definiar a coluna da meta
 	MOV BX, cfhandle
 	CALL PROCESSNUMBER
 	MOV XEXIT, AX
 	RET
 PROCESSEXIT ENDP
 
+; Inicializa as coordenadas X e Y das moedas (com os dados do fileLine) e coloca-as no array de moedas
+; INPUT:
+;		- fileLine: Buffer de onde importar os dados
+;		- SI: Indice para o buffer
+; 		- NCOINS: Número de moedas
 PROCESSCOIN PROC NEAR
 	INC SI
 	INC SI
