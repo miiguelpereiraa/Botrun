@@ -106,7 +106,7 @@ MAIN PROC FAR
 	
 	;Desenha o quadrado do robot
 	XOR AX,AX					;Coloca AX a 0
-	MOV AL,5						;Cor magenta
+	MOV AL,4						;Cor vermelha
 	MOV DX,YROBOT			;Valor Y inicial
 	MOV CX,XROBOT			;Valor X inicial
 	MOV BX,9					;Comprimento
@@ -1058,33 +1058,6 @@ STARTDW:
 ENDDW:
 		RET
 DRAWALLS ENDP
-
-;Desenha os monstros de jogo
-;INPUT:
-;	- SI: ARRAY de paredes
-;	- CX: Número de linhas no array
-DRAWMONSTERS PROC NEAR
-
-STARTDM:
-		CMP CX,0			;Verifica se todos os monstros foram desenhados
-		JE ENDDM
-		PUSH CX			;Guarda o valor de CX na pilha
-		ADD SI,2			;Avança posição do ponteiro
-		MOV AL,4			;Cor vermelha
-		MOV DX,[SI]	;Valor Y inicial
-		ADD SI,2			
-		MOV CX,[SI]	;Valor X inicial
-		ADD SI,2
-		MOV BX,9
-		ADD SI,2
-		CALL DRAWSQUARE
-		POP CX			;Obtém novamente o valor de CX
-		DEC CX
-		JMP STARTDM
-		
-ENDDM:
-		RET
-DRAWMONSTERS ENDP
 
 ;Desenha um quadrado
 ;INPUT:
